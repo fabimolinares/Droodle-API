@@ -174,14 +174,14 @@ class FetchHandler(webapp2.RequestHandler):
 			
 			while url is not None:
 				response = urlfetch.fetch(
-                                          url = url, 
-										  method = method, 
-										  payload = data, 
-										  follow_redirects = False, 
-										  allow_truncated = False, 
-										  headers = getHeaders(), 
-										  deadline=10
-                                         )
+                                                          url = url, 
+					                  method = method, 
+					   		  payload = data, 
+					   		  follow_redirects = False, 
+					                  allow_truncated = False, 
+						          headers = getHeaders(), 
+							  deadline=10
+                                           )
 				form_data = None
 				method    = urlfetch.GET
 				COOKIE.load(response.headers.get('set-cookie', ''))
