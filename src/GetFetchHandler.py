@@ -47,7 +47,8 @@ class FetchHandler(webapp2.RequestHandler):
         PASSWORD = decodestring( str( self.request.get('password') ) )
         URL      = self.request.get('url') 
         
-        if not URL.endswith('/login/index.php'): URL += '/login/index.php'
+        if not URL.endswith('/login/index.php') and not URL.endswith('/login/index.php/'): 
+            URL += '/login/index.php'
         
         COOKIE   = Cookie.SimpleCookie()
 
