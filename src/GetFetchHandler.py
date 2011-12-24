@@ -25,7 +25,7 @@ class FetchHandler(webapp2.RequestHandler):
                         title:'Assignment'
                         status:'Submitted'
                         due:'Monday, 9 September 2001, 09:15 AM'
-			link:'http://kis.net.ua/study/mod/assignment/view.php?id=3785' 
+			grade:'http://kis.net.ua/study/mod/assignment/view.php?id=3785' 
                     },
                     {
                         ...
