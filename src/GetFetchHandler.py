@@ -5,7 +5,7 @@ from lxml import html, etree
 from base64 import decodestring
 import webapp2
 import urllib, Cookie
-from google.appengine.api import urlfetch
+from google.appengine.api import urlfetch   
 
 class FetchHandler(webapp2.RequestHandler):
     
@@ -124,7 +124,6 @@ class FetchHandler(webapp2.RequestHandler):
     
         def extractData(map,doc):
 
-            if not isinstance(doc,etree._Element):  doc = etree.HTML(doc)
             data = {}
 
             for k,v in map.iteritems():
@@ -154,50 +153,49 @@ class FetchHandler(webapp2.RequestHandler):
             return data
     
         def makeCookieHeader():
-			
-			cookieHeader = ""
-			for value in COOKIE.values():
-				cookieHeader += "%s=%s; " % (value.key, value.value)
-			return cookieHeader
+
+            cookieHeader = ""
+            for value in COOKIE.values():
+                cookieHeader += "%s=%s; " % (value.key, value.value)
+            return cookieHeader
         
         def getHeaders():
-			
-			headers = { 
+
+            headers = { 
 			'Content-Type': 'application/x-www-form-urlencoded', 
 			'User-agent':'Opera/9.20 (Windows NT 6.0; U; en)',
 			'Cookie' : makeCookieHeader()
 			}
-				
-			return headers
+
+            return headers
         
         def fetchPage(url, data = None):
-			
-			if data is None:
-				method = urlfetch.GET
-			else:
-				method = urlfetch.POST
-			
-			while url is not None:
-				response = urlfetch.fetch(
+
+            if data is None:
+                method = urlfetch.GET
+            else:
+                method = urlfetch.POST
+
+            while url is not None:
+                response = urlfetch.fetch(
                                           url = url, 
 				                          method = method, 
 					   		              payload = data, 
 					   		              follow_redirects = False, 
-					                      allow_truncated = False, 
 						                  headers = getHeaders(), 
 							              deadline=10
                                          )
-				data = None
-				method = urlfetch.GET
-				COOKIE.load(response.headers.get('set-cookie', ''))
-				
-				url = response.headers.get('location')
-			
-			c = response.content    
-			tree = lxml.html.fromstring(c)
+                data = None
+                method = urlfetch.GET
+                COOKIE.load(response.headers.get('set-cookie', ''))
 
-			return tree
-			
+                url = response.headers.get('location')
+
+            c = response.content    
+            tree = lxml.html.fromstring(c)
+
+            return tree
+
         #MAIN
         doc = fetchPage( URL, urllib.urlencode({'username':USERNAME,'password':PASSWORD}) )
        
@@ -211,3 +209,46 @@ class FetchHandler(webapp2.RequestHandler):
         self.response.headers['Content-Type'] = 'json'
         self.response.headers['Cookie'] = makeCookieHeader()
         self.response.out.write(jsondata)
+        
+class GradeFetchHandler(webapp2.RequestHandler):
+    
+    """
+    Fetch a grade from moodle given assignment url and cookie header
+    """
+
+    def post(self):
+        
+        LINK = self.request.get('link')
+        COOKIE = self.request.headers['Cookie']
+        
+        def getHeaders():
+            
+            headers = { 
+            'User-agent':'Opera/9.20 (Windows NT 6.0; U; en)',
+            'Cookie' : COOKIE
+            }
+                
+            return headers
+        
+        response = urlfetch.fetch(
+                                  url = LINK, 
+                                  method = urlfetch.GET, 
+                                  headers = getHeaders(), 
+                                  deadline=10
+                                 )
+        
+        c = response.content    
+        tree = lxml.html.fromstring(c)
+        
+        try:
+            data = { 'grade': tree.xpath("//div[contains(@class,'grade')]/text()")[0].strip(),
+                     'comment':tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
+                   }
+        except:
+            self.abort(404)
+        
+        jsondata = demjson.encode(data)
+        
+        self.response.headers['Content-Type'] = 'json'
+        self.response.out.write(jsondata)
+        

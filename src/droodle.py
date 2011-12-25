@@ -22,14 +22,14 @@ import jinja2
 jinja_environment = jinja2.Environment(
 				loader = jinja2.FileSystemLoader(path))
 
-from GetFetchHandler import FetchHandler
+from GetFetchHandler import FetchHandler, GradeFetchHandler
 
 class MainPageHandler(webapp2.RequestHandler):
     def get(self):
-        template_values = {'last_updated': '22.12.11'}
+        template_values = {'last_updated': '25.12.11'}
         template = jinja_environment.get_template('index.html')
         self.response.out.write(template.render(template_values))
 
-app = webapp2.WSGIApplication([('/', MainPageHandler), ('/fetch',FetchHandler)],
+app = webapp2.WSGIApplication([('/', MainPageHandler), ('/fetch',FetchHandler), ('/fetchGrade',GradeFetchHandler)],
                               debug=True)
 
