@@ -241,11 +241,25 @@ class GradeFetchHandler(webapp2.RequestHandler):
         tree = lxml.html.fromstring(c)
         
         try:
-            data = { 'grade': tree.xpath("//div[contains(@class,'grade')]/text()")[0].strip(),
-                     'comment':tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
-                   }
+            grade = tree.xpath("//div[contains(@class,'grade')]/text()")[0].strip()
         except:
-            self.abort(404)
+            grade = "None"
+            
+        try:
+            comment = tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
+        except:
+            comment = "None"
+        
+        try:
+            description = tree.xpath("//div[contains(@class,'intro')]/div/text()")[0].strip()
+        except:
+            description = "None"    
+            
+        
+        data = { 'grade': grade,
+                 'comment': comment,
+                 'description': description
+               }
         
         jsondata = demjson.encode(data)
         
