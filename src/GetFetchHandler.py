@@ -253,7 +253,10 @@ class GradeFetchHandler(webapp2.RequestHandler):
         try:
             description = tree.xpath("//div[contains(@class,'no-overflow')]/text()")[0].strip()
         except:
-            description = "None"    
+            try:
+                description = tree.xpath("//div[contains(@class,'no-overflow')]/p/text()")[0].strip()
+            except:
+                description = "None"    
             
         
         data = { 'grade': grade,
