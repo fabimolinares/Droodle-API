@@ -251,7 +251,7 @@ class GradeFetchHandler(webapp2.RequestHandler):
             comment = "None"
         
         try:
-            description = tree.xpath("//div[contains(@class,'intro')]/div/text()")[0].strip()
+            description = tree.xpath("//div[contains(@class,'no-overflow')]/text()")[0].strip()
         except:
             description = "None"    
             
