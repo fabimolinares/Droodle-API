@@ -254,7 +254,13 @@ class GradeFetchHandler(webapp2.RequestHandler):
             description = tree.xpath("//div[contains(@class,'no-overflow')]/text()")[0].strip()
         except:
             try:
-                description = tree.xpath("//div[contains(@class,'no-overflow')]/p/text()")[0].strip()
+                v = tree.xpath("//div[contains(@class,'no-overflow')]/p")
+                def getWholeComment(val):
+                    for v in val: 
+                        if isinstance(v,list):
+                            for el in v: getWholeComment(el)
+                        else: description += v.xpath("text()").strip()
+                getWholeComment(v)
             except:
                 description = "None"    
             
