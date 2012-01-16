@@ -181,11 +181,11 @@ class getAssignment(webapp2.RequestHandler):
     
     def post(self):
     
-        URL = self.request.get('link')
+        URL    = self.request.get('link')
         COOKIE = self.request.headers['Cookie']
         
         fetch = fetchPage(URL, None, COOKIE)
-        tree = fetch[0]
+        tree  = fetch[0]
         assignment = {}
         
         try:
