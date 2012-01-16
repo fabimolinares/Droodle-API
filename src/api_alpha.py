@@ -5,7 +5,7 @@ from base64 import decodestring
 from google.appengine.api import urlfetch
 import urllib
 import json, Cookie
-import threading, time
+import threading
 
 def makeCookieHeader(cookie):
     
@@ -74,15 +74,11 @@ class getCourses(webapp2.RequestHandler):
     
     """
     
-    def get(self):
+    def post(self):
         
-        #USERNAME = decodestring( str( self.request.get('username') ) )
-        #PASSWORD = decodestring( str( self.request.get('password') ) )
-        #URL      = self.request.get('url')
-        
-        USERNAME = 'rtiutiun'
-        PASSWORD = 'baby3own'
-        URL = 'http://kis.net.ua/study' 
+        USERNAME = decodestring( str( self.request.get('username') ) )
+        PASSWORD = decodestring( str( self.request.get('password') ) )
+        URL      = self.request.get('url') 
         
         if not URL.endswith('/login/index.php') and not URL.endswith('/login/index.php/'): 
             URL  += '/login/index.php'
@@ -122,11 +118,14 @@ class getCourses(webapp2.RequestHandler):
             thread = getAssignments(course, cookie)
             thread.start()
             threads.append(thread)
-        
+              
         for thread in threads:
-            thread.join()
-            data['courses'].append(thread.COURSE)
-
+            course = thread.COURSE
+            for t in thread.THREADS:
+                assignment = t.ASSIGNMENT
+                course['assignments'].append(assignment)
+            data['courses'].append(course)
+            
         self.response.headers['Content-Type'] = 'json'
         self.response.out.write(json.dumps(data))
         
@@ -156,18 +155,20 @@ class getAssignments(threading.Thread):
         tree  = fetch[0]
         
         assignments = tree.xpath("//li[contains(@class,'assignment')]/div/a")
+        self.DATA   = { 'assignments':[] }
+        self.THREADS = []
         
-        for assignment in assignments:
-            self.COURSE['assignments'].append(
-                                              {'title': assignment.xpath("span/text()")[0],
-                                               'link' : assignment.xpath("@href")[0], 
-                                              }
-                                             )
+        for asm in assignments:
+            assignment = { 'title': asm.xpath("span/text()")[0] }
+            thread = getAssignment(asm.xpath("@href")[0], self.COOKIE, assignment)
+            thread.start()
+            self.THREADS.append(thread)
         
-class getAssignment(webapp2.RequestHandler):
+class getAssignment(threading.Thread):
      
     """
     {
+        title:'Bla',
         description:'Bla',
         due:'Monday, 9 September 2001, 09:15 AM',
         available_from:'Sunday, 8 September 2001, 09:15 AM',
@@ -178,56 +179,58 @@ class getAssignment(webapp2.RequestHandler):
     }
     
     """
+    def __init__(self, url, cookie, assignment):
+        self.URL = url
+        self.COOKIE = cookie
+        self.ASSIGNMENT = assignment
+        threading.Thread.__init__(self)
     
-    def post(self):
+    def run(self):
     
-        URL = self.request.get('link')
-        COOKIE = self.request.headers['Cookie']
-        
-        fetch = fetchPage(URL, None, COOKIE)
+        fetch = fetchPage(self.URL, None, self.COOKIE)
         tree = fetch[0]
-        assignment = {}
         
         try:
-            assignment['description'] = ""
+            self.ASSIGNMENT['description'] = ""
             val = tree.xpath("//div[contains(@class,'no-overflow')]//text()")
             for v in val:
-                self.assignment['description'] += v.strip() + " "
+                self.ASSIGNMENT['description'] += v.strip() + " "
         except:
-            assignment['description'] = "None"
+            self.ASSIGNMENT['description'] = "None"
             
         dates = tree.xpath("//td[contains(@class,'c1')]/text()")
-        assignment['available_from'] = dates[0]
         
         try:
-            assignment['due'] = dates[1]
+            self.ASSIGNMENT['available_from'] = dates[0]
         except:
-            assignment['due'] = "None"
+            self.ASSIGNMENT['available_from'] = "None"
+        
+        try:
+            self.ASSIGNMENT['due'] = dates[1]
+        except:
+            self.ASSIGNMENT['due'] = "None"
             
         try:
             tin = tree.xpath("//div[contains(@class,'reportlink')]/span")
-            assignment['turned_in'] = tin[0].xpath("text()")
-            assignment['status'] = "Done, " + tin[0].xpath("@class")
+            self.ASSIGNMENT['turned_in'] = tin[0].xpath("text()")
+            self.ASSIGNMENT['status'] = "Done, " + tin[0].xpath("@class")
         except:
-            assignment['turned_in'] = "Not turned in"
-            assignment['status'] = "Not Done"
+            self.ASSIGNMENT['turned_in'] = "Not turned in"
+            self.ASSIGNMENT['status'] = "Not Done"
             
-        if assignment['status'] != "Not Done":
+        if self.ASSIGNMENT['status'] != "Not Done":
         
             try:
-                assignment['grade'] = tree.xpath("//div[contains(@class,'grade')]/text()")[0].strip()
+                self.ASSIGNMENT['grade'] = tree.xpath("//div[contains(@class,'grade')]/text()")[0].strip()
             except:
-                assignment['grade'] = "None"
+                self.ASSIGNMENT['grade'] = "None"
                            
             try:
-                assignment['comment'] = tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
+                self.ASSIGNMENT['comment'] = tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
             except:
-                assignment['comment'] = "None"
+                self.ASSIGNMENT['comment'] = "None"
                 
         else:
-            assignment['grade'] = "None"
-            assignment['comment'] = "None"
-            
-        self.response.headers['Content-Type'] = 'json'
-        self.response.out.write(json.dumps(assignment))
+            self.ASSIGNMENT['grade'] = "None"
+            self.ASSIGNMENT['comment'] = "None"
         

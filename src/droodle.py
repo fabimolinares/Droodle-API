@@ -24,7 +24,7 @@ jinja_environment = jinja2.Environment(
 				loader = jinja2.FileSystemLoader(path))
 
 from GetFetchHandler import FetchHandler, GradeFetchHandler
-from api import getCourses, getAssignments, getAssignment 
+from api import getCourses, getAssignment 
 
 class MainPageHandler(webapp2.RequestHandler):
     def get(self):
@@ -35,5 +35,6 @@ class MainPageHandler(webapp2.RequestHandler):
 app = webapp2.WSGIApplication([('/', MainPageHandler),
 							   ('/fetch',FetchHandler), 
 							   ('/fetchGrade',GradeFetchHandler),
-							   #('/api/getCourses', getCourses),
+							   ('/api/getCourses', getCourses),
+							   ('/api/getAssignment', getAssignment),
 							   ])

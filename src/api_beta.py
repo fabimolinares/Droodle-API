@@ -74,15 +74,11 @@ class getCourses(webapp2.RequestHandler):
     
     """
     
-    def get(self):
+    def post(self):
         
-        #USERNAME = decodestring( str( self.request.get('username') ) )
-        #PASSWORD = decodestring( str( self.request.get('password') ) )
-        #URL      = self.request.get('url')
-        
-        USERNAME = 'rtiutiun'
-        PASSWORD = 'baby3own'
-        URL = 'http://kis.net.ua/study' 
+        USERNAME = decodestring( str( self.request.get('username') ) )
+        PASSWORD = decodestring( str( self.request.get('password') ) )
+        URL      = self.request.get('url')
         
         if not URL.endswith('/login/index.php') and not URL.endswith('/login/index.php/'): 
             URL  += '/login/index.php'
@@ -125,8 +121,18 @@ class getCourses(webapp2.RequestHandler):
         
         for thread in threads:
             thread.join()
-            data['courses'].append(thread.COURSE)
-
+            for assignment in thread.COURSE['assignments']:
+                t = getAssignment(assignment, cookie)
+                t.start()
+                thread.THREADS.append(t)
+            thread.COURSE['assignments'].clear()
+            
+        #time.sleep(25)
+        
+        for thread in threads:
+            for t in thread.THREADS:
+                thread.COURSE['assignments'].append(t.ASSIGNMENT)
+            
         self.response.headers['Content-Type'] = 'json'
         self.response.out.write(json.dumps(data))
         
@@ -148,6 +154,7 @@ class getAssignments(threading.Thread):
         
         self.COURSE = course
         self.COOKIE = cookie
+        self.THREADS = []
         threading.Thread.__init__(self)
     
     def run(self):
@@ -158,16 +165,13 @@ class getAssignments(threading.Thread):
         assignments = tree.xpath("//li[contains(@class,'assignment')]/div/a")
         
         for assignment in assignments:
-            self.COURSE['assignments'].append(
-                                              {'title': assignment.xpath("span/text()")[0],
-                                               'link' : assignment.xpath("@href")[0], 
-                                              }
-                                             )
+            self.COURSE['assignments'].append({'title': assignment.xpath("span/text()")[0]})
         
-class getAssignment(webapp2.RequestHandler):
+class getAssignment(threading.Thread):
      
     """
     {
+        title:'Bla',
         description:'Bla',
         due:'Monday, 9 September 2001, 09:15 AM',
         available_from:'Sunday, 8 September 2001, 09:15 AM',
@@ -178,15 +182,17 @@ class getAssignment(webapp2.RequestHandler):
     }
     
     """
+   
+    def __init__(self, assignment, cookie):
+        self.ASSIGNMENT = assignment
+        self.COOKIE = cookie
+        threading.Thread.__init__(self)
     
-    def post(self):
+    def run(self):
     
-        URL = self.request.get('link')
-        COOKIE = self.request.headers['Cookie']
-        
-        fetch = fetchPage(URL, None, COOKIE)
+        fetch = fetchPage(self.ASSIGNMENT['link'], None, self.COOKIE)
         tree = fetch[0]
-        assignment = {}
+        assignment = self.ASSIGNMENT
         
         try:
             assignment['description'] = ""
@@ -197,7 +203,11 @@ class getAssignment(webapp2.RequestHandler):
             assignment['description'] = "None"
             
         dates = tree.xpath("//td[contains(@class,'c1')]/text()")
-        assignment['available_from'] = dates[0]
+        
+        try:
+            assignment['available_from'] = dates[0]
+        except:
+            assignment['available_from'] = "None"
         
         try:
             assignment['due'] = dates[1]
@@ -228,6 +238,5 @@ class getAssignment(webapp2.RequestHandler):
             assignment['grade'] = "None"
             assignment['comment'] = "None"
             
-        self.response.headers['Content-Type'] = 'json'
-        self.response.out.write(json.dumps(assignment))
+        self.ASSIGNMENT = assignment
         
