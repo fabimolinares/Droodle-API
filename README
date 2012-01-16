@@ -1,2 +1,3 @@
 API for Droodle app hosted on Google App Engine.
+Parses html elements with lxml from requested moodles and returns a json with requested data.
 http://droodle-api.appspot.com/

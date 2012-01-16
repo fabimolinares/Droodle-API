@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python
 #
 # Copyright 2007 Google Inc.
@@ -23,13 +24,17 @@ jinja_environment = jinja2.Environment(
 				loader = jinja2.FileSystemLoader(path))
 
 from GetFetchHandler import FetchHandler, GradeFetchHandler
+from api import getCourses, getAssignments, getAssignment 
 
 class MainPageHandler(webapp2.RequestHandler):
     def get(self):
-        template_values = {'last_updated': '8.1.12'}
+        template_values = {'last_updated': '15.1.12'}
         template = jinja_environment.get_template('index.html')
         self.response.out.write(template.render(template_values))
 
-app = webapp2.WSGIApplication([('/', MainPageHandler), ('/fetch',FetchHandler), ('/fetchGrade',GradeFetchHandler)],
-                              debug=True)
-
+app = webapp2.WSGIApplication([('/', MainPageHandler),
+							   ('/api/getCourses', getCourses),
+							   ('/api/getAssignments', getAssignments),
+							   ('/api/getAssignment', getAssignment),
+							   ('/fetch',FetchHandler), 
+							   ('/fetchGrade',GradeFetchHandler)])
