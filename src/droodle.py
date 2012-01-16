@@ -33,8 +33,7 @@ class MainPageHandler(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
 
 app = webapp2.WSGIApplication([('/', MainPageHandler),
-							   ('/api/getCourses', getCourses),
-							   ('/api/getAssignments', getAssignments),
-							   ('/api/getAssignment', getAssignment),
 							   ('/fetch',FetchHandler), 
-							   ('/fetchGrade',GradeFetchHandler)])
+							   ('/fetchGrade',GradeFetchHandler),
+							   #('/api/getCourses', getCourses),
+							   ])

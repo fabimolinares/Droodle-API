@@ -1,10 +1,11 @@
 
+import webapp2
 from lxml import html
 from base64 import decodestring
 from google.appengine.api import urlfetch
-import json
-import webapp2
-import urllib, Cookie
+import urllib
+import json, Cookie
+import threading
 
 def makeCookieHeader(cookie):
     
@@ -47,7 +48,7 @@ def fetchPage(url, data, cookie):
                                       headers = getHeaders(cookie), 
                                       deadline=10
                                      )
-            data = None
+            data   = None
             method = urlfetch.GET
             cookie.load(response.headers.get('set-cookie', ''))
             
@@ -80,7 +81,7 @@ class getCourses(webapp2.RequestHandler):
         URL      = self.request.get('url') 
         
         if not URL.endswith('/login/index.php') and not URL.endswith('/login/index.php/'): 
-            URL += '/login/index.php'
+            URL  += '/login/index.php'
         
         fetch = fetchPage(URL, 
                           urllib.urlencode({'username':USERNAME,'password':PASSWORD}), 
@@ -89,6 +90,7 @@ class getCourses(webapp2.RequestHandler):
         tree = fetch[0]
         cookie = makeCookieHeader(fetch[1])
         data = {}
+        threads = []
         
         student = tree.xpath("//div[contains(@class,'logininfo')]/a")
         
@@ -100,7 +102,7 @@ class getCourses(webapp2.RequestHandler):
         fetch = fetchPage(student[0].xpath("@href")[0],
                          None,
                          cookie
-                        )
+                         )
         tree = fetch[0]
         student = None
         courses = tree.xpath("//td[contains(@class,'info c1')]/a")
@@ -112,13 +114,22 @@ class getCourses(webapp2.RequestHandler):
             if s.rfind('tag') != -1: continue #sometimes there are 'tags', not courses
             link = (s[:s.find('=')]+s[s.rfind('='):]).replace('user','course')
             course['link'] = link
-            data['courses'].append(course)  
-        
+            course['assignments'] = []
+            thread = getAssignments(course, cookie)
+            thread.start()
+            threads.append(thread)
+              
+        for thread in threads:
+            course = thread.COURSE
+            for t in thread.THREADS:
+                assignment = t.ASSIGNMENT
+                course['assignments'].append(assignment)
+            data['courses'].append(course)
+            
         self.response.headers['Content-Type'] = 'json'
-        self.response.headers['Cookie'] = cookie
         self.response.out.write(json.dumps(data))
         
-class getAssignments(webapp2.RequestHandler):
+class getAssignments(threading.Thread):
      
     """
     {
@@ -132,102 +143,95 @@ class getAssignments(webapp2.RequestHandler):
     
     """
     
-    def post(self):
+    def __init__(self, course, cookie):
         
-        URL = self.request.get('link')
-        COOKIE = self.request.headers['Cookie']
+        self.COURSE = course
+        self.COOKIE = cookie
+        threading.Thread.__init__(self)
     
-        fetch = fetchPage(URL, None, COOKIE)
-        tree = fetch[0]
+    def run(self):
+        
+        fetch = fetchPage(self.COURSE['link'], None, self.COOKIE)
+        tree  = fetch[0]
         
         assignments = tree.xpath("//li[contains(@class,'assignment')]/div/a")
-        data = { 'assignments':[] }
+        self.DATA   = { 'assignments':[] }
+        self.THREADS = []
         
         for asm in assignments:
-            assignment = { 'link' : asm.xpath("@href")[0],
-                           'title': asm.xpath("span/text()")[0]  
-                         }
-            data['assignments'].append(assignment)
-            
-        self.response.headers['Content-Type'] = 'json'
-        self.response.out.write(json.dumps(data))
+            assignment = { 'title': asm.xpath("span/text()")[0] }
+            thread = getAssignment(asm.xpath("@href")[0], self.COOKIE, assignment)
+            thread.start()
+            self.THREADS.append(thread)
+        #self.DATA['assignments'] = 
         
-class getAssignment(webapp2.RequestHandler):
+class getAssignment(threading.Thread):
      
     """
     {
-        assignment:
-            {
-                description:'Bla'
-                due:'Monday, 9 September 2001, 09:15 AM'
-                available_from:'Yesterday'
-                turned_in:'Today'
-                grade:'A'
-                comment:'Super fantastic.'
-                status:'Submitted'
-            },
+        title:'Bla',
+        description:'Bla',
+        due:'Monday, 9 September 2001, 09:15 AM',
+        available_from:'Sunday, 8 September 2001, 09:15 AM',
+        turned_in:'Tuesday, 10 September 2001, 09:15 AM',
+        grade:'B',
+        comment:'Good, but late.',
+        status:'Submitted, late'
     }
     
     """
+    def __init__(self, url, cookie, assignment):
+        self.URL = url
+        self.COOKIE = cookie
+        self.ASSIGNMENT = assignment
+        threading.Thread.__init__(self)
     
-    def post(self):
-        
-        URL = self.request.get('link')
-        COOKIE = self.request.headers['Cookie']
+    def run(self):
     
-        fetch = fetchPage(URL, None, COOKIE)
+        fetch = fetchPage(self.URL, None, self.COOKIE)
         tree = fetch[0]
         
         try:
-            description = ""
+            self.ASSIGNMENT['description'] = ""
             val = tree.xpath("//div[contains(@class,'no-overflow')]//text()")
             for v in val:
-                description += v.strip() + " "
+                self.ASSIGNMENT['description'] += v.strip() + " "
         except:
-            description = "None"
+            self.ASSIGNMENT['description'] = "None"
             
         dates = tree.xpath("//td[contains(@class,'c1')]/text()")
-        available_from = dates[0]
-            
+        
         try:
-            due = dates[1]
+            self.ASSIGNMENT['available_from'] = dates[0]
         except:
-            due = "None"
+            self.ASSIGNMENT['available_from'] = "None"
+        
+        try:
+            self.ASSIGNMENT['due'] = dates[1]
+        except:
+            self.ASSIGNMENT['due'] = "None"
             
         try:
             tin = tree.xpath("//div[contains(@class,'reportlink')]/span")
-            turned_in = tin[0].xpath("text()")
-            status = "Done, " + tin[0].xpath("@class")
+            self.ASSIGNMENT['turned_in'] = tin[0].xpath("text()")
+            self.ASSIGNMENT['status'] = "Done, " + tin[0].xpath("@class")
         except:
-            turned_in = "Not turned in"
-            status = "Not Done"
+            self.ASSIGNMENT['turned_in'] = "Not turned in"
+            self.ASSIGNMENT['status'] = "Not Done"
             
-        if status != "Not Done":
+        if self.ASSIGNMENT['status'] != "Not Done":
         
             try:
-                grade = tree.xpath("//div[contains(@class,'grade')]/text()")[0].strip()
+                self.ASSIGNMENT['grade'] = tree.xpath("//div[contains(@class,'grade')]/text()")[0].strip()
             except:
-                grade = "None"
+                self.ASSIGNMENT['grade'] = "None"
                            
             try:
-                comment = tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
+                self.ASSIGNMENT['comment'] = tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
             except:
-                comment = "None"
+                self.ASSIGNMENT['comment'] = "None"
                 
         else:
-            grade = "None"
-            comment = "None"
-            
-        data = { 
-                 'description': description,
-                 'grade': grade,
-                 'comment': comment,
-                 'available_from': available_from,
-                 'due': due,
-                 'turned_in': turned_in,
-                 'status': status,
-               }
-        
-        self.response.headers['Content-Type'] = 'json'
-        self.response.out.write(json.dumps(data))  
+            self.ASSIGNMENT['grade'] = "None"
+            self.ASSIGNMENT['comment'] = "None"
         
