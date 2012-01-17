@@ -74,15 +74,11 @@ class getCourses(webapp2.RequestHandler):
     
     """
     
-    def get(self):
+    def post(self):
         
-        #USERNAME = decodestring( str( self.request.get('username') ) )
-        #PASSWORD = decodestring( str( self.request.get('password') ) )
-        #URL      = self.request.get('url')
-        
-        USERNAME = 'rtiutiun'
-        PASSWORD = 'baby3own'
-        URL = 'http://kis.net.ua/study' 
+        USERNAME = decodestring( str( self.request.get('username') ) )
+        PASSWORD = decodestring( str( self.request.get('password') ) )
+        URL      = self.request.get('url')
         
         if not URL.endswith('/login/index.php') and not URL.endswith('/login/index.php/'): 
             URL  += '/login/index.php'
@@ -113,12 +109,13 @@ class getCourses(webapp2.RequestHandler):
         courses.pop(0)
         
         for crs in courses:
-            course = { 'title':crs.xpath("text()")[0].strip(), }
             s = crs.xpath("@href")[0]
             if s.rfind('tag') != -1: continue #sometimes there are 'tags', not courses
-            link = (s[:s.find('=')]+s[s.rfind('='):]).replace('user','course')
-            course['link'] = link
-            course['assignments'] = []
+            link   = (s[:s.find('=')]+s[s.rfind('='):]).replace('user','course')
+            course = { 'title':crs.xpath("text()")[0].strip(),
+                       'link': link,
+                       'assignments': [] 
+                     }
             thread = getAssignments(course, cookie)
             thread.start()
             threads.append(thread)
@@ -159,7 +156,7 @@ class getAssignments(threading.Thread):
         
         for assignment in assignments:
             self.COURSE['assignments'].append(
-                                              {'title': assignment.xpath("span/text()")[0],
+                                              {'title': assignment.xpath("span/text()")[0].strip(),
                                                'link' : assignment.xpath("@href")[0], 
                                               }
                                              )
