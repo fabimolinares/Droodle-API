@@ -19,7 +19,7 @@ import webapp2
 import jinja2
 import os
 
-from GetFetchHandler import FetchHandler, GradeFetchHandler
+#from GetFetchHandler import FetchHandler, GradeFetchHandler
 from api import getCourses, getAssignments, getAssignment 
 
 path = os.path.join(os.path.dirname(__file__), 'templates')
@@ -33,8 +33,8 @@ class MainPageHandler(webapp2.RequestHandler):
         self.response.out.write(template.render(template_values))
 
 app = webapp2.WSGIApplication([('/', MainPageHandler),
-							   ('/fetch',FetchHandler), 
-							   ('/fetchGrade',GradeFetchHandler),
+							   #('/fetch',FetchHandler), 
+							   #('/fetchGrade',GradeFetchHandler),
 							   ('/api/getCourses', getCourses),
 							   ('/api/getAssignments', getAssignments),
 							   ('/api/getAssignment', getAssignment),
