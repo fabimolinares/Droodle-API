@@ -5,7 +5,6 @@ from base64 import decodestring
 from google.appengine.api import urlfetch
 import urllib
 import json, Cookie
-import threading, time
 
 def makeCookieHeader(cookie):
     
@@ -87,10 +86,10 @@ class getCourses(webapp2.RequestHandler):
                           urllib.urlencode({'username':USERNAME,'password':PASSWORD}), 
                           Cookie.SimpleCookie()
                          )
-        tree = fetch[0]
-        cookie = makeCookieHeader(fetch[1])
-        data = {}
-        threads = []
+        
+        tree    = fetch[0]
+        cookie  = makeCookieHeader(fetch[1])
+        data    = {}
         
         student = tree.xpath("//div[contains(@class,'logininfo')]/a")
         
@@ -99,35 +98,29 @@ class getCourses(webapp2.RequestHandler):
         data['student'] = student[0].xpath("text()")[0]
         data['courses'] = []
         
-        fetch = fetchPage(student[0].xpath("@href")[0],
-                         None,
-                         cookie
-                         )
-        tree = fetch[0]
+        fetch   = fetchPage(student[0].xpath("@href")[0],
+                            None,
+                            cookie
+                           )
+        tree    = fetch[0]
         student = None
-        courses = tree.xpath("//td[contains(@class,'info c1')]/a")
-        courses.pop(0)
+        rawcourses = tree.xpath("//td[contains(@class,'info c1')]/a")
+        rawcourses.pop(0)
         
-        for crs in courses:
+        for crs in rawcourses:
             s = crs.xpath("@href")[0]
             if s.rfind('tag') != -1: continue #sometimes there are 'tags', not courses
             link   = (s[:s.find('=')]+s[s.rfind('='):]).replace('user','course')
             course = { 'title':crs.xpath("text()")[0].strip(),
-                       'link': link,
-                       'assignments': [] 
+                       'link': link, 
                      }
-            thread = getAssignments(course, cookie)
-            thread.start()
-            threads.append(thread)
-        
-        for thread in threads:
-            thread.join()
-            data['courses'].append(thread.COURSE)
+            data['courses'].append(course)
 
         self.response.headers['Content-Type'] = 'json'
+        self.response.headers['Cookie'] = cookie
         self.response.out.write(json.dumps(data))
         
-class getAssignments(threading.Thread):
+class getAssignments(webapp2.RequestHandler):
      
     """
     {
@@ -141,25 +134,26 @@ class getAssignments(threading.Thread):
     
     """
     
-    def __init__(self, course, cookie):
+    def post(self):
         
-        self.COURSE = course
-        self.COOKIE = cookie
-        threading.Thread.__init__(self)
-    
-    def run(self):
+        URL    = self.request.get('link')
+        COOKIE = self.request.headers['Cookie']
         
-        fetch = fetchPage(self.COURSE['link'], None, self.COOKIE)
+        fetch = fetchPage(URL, None, COOKIE)
         tree  = fetch[0]
         
-        assignments = tree.xpath("//li[contains(@class,'assignment')]/div/a")
+        rawassignments = tree.xpath("//li[contains(@class,'assignment')]/div/a")
+        assignments    = []
         
-        for assignment in assignments:
-            self.COURSE['assignments'].append(
-                                              {'title': assignment.xpath("span/text()")[0].strip(),
-                                               'link' : assignment.xpath("@href")[0], 
-                                              }
-                                             )
+        for assignment in rawassignments:
+            assignments.append(
+                               {'title': assignment.xpath("span/text()")[0].strip(),
+                                'link' : assignment.xpath("@href")[0], 
+                               }
+                              )
+        
+        self.response.headers['Content-Type'] = 'json'
+        self.response.out.write(json.dumps(assignments))
         
 class getAssignment(webapp2.RequestHandler):
      
@@ -189,12 +183,16 @@ class getAssignment(webapp2.RequestHandler):
             assignment['description'] = ""
             val = tree.xpath("//div[contains(@class,'no-overflow')]//text()")
             for v in val:
-                self.assignment['description'] += v.strip() + " "
+                assignment['description'] += v.strip() + " "
         except:
             assignment['description'] = "None"
-            
-        dates = tree.xpath("//td[contains(@class,'c1')]/text()")
-        assignment['available_from'] = dates[0]
+        
+        dates = tree.xpath("//td[contains(@class,'c1')]/text()")    
+        
+        try:
+            assignment['available_from'] = dates[0]
+        except:
+            assignment['available_from'] = "None"
         
         try:
             assignment['due'] = dates[1]
@@ -203,8 +201,8 @@ class getAssignment(webapp2.RequestHandler):
             
         try:
             tin = tree.xpath("//div[contains(@class,'reportlink')]/span")
-            assignment['turned_in'] = tin[0].xpath("text()")
-            assignment['status'] = "Done, " + tin[0].xpath("@class")
+            assignment['turned_in'] = tin[0].xpath("text()")[0]
+            assignment['status'] = "Done, " + tin[0].xpath("@class")[0]
         except:
             assignment['turned_in'] = "Not turned in"
             assignment['status'] = "Not Done"

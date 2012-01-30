@@ -15,16 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import os
-path = os.path.join(os.path.dirname(__file__), 'templates')
-
 import webapp2
 import jinja2
-jinja_environment = jinja2.Environment(
-				loader = jinja2.FileSystemLoader(path))
+import os
 
 from GetFetchHandler import FetchHandler, GradeFetchHandler
-from api import getCourses, getAssignment 
+from api import getCourses, getAssignments, getAssignment 
+
+path = os.path.join(os.path.dirname(__file__), 'templates')
+jinja_environment = jinja2.Environment(
+loader = jinja2.FileSystemLoader(path))
 
 class MainPageHandler(webapp2.RequestHandler):
     def get(self):
@@ -36,5 +36,6 @@ app = webapp2.WSGIApplication([('/', MainPageHandler),
 							   ('/fetch',FetchHandler), 
 							   ('/fetchGrade',GradeFetchHandler),
 							   ('/api/getCourses', getCourses),
+							   ('/api/getAssignments', getAssignments),
 							   ('/api/getAssignment', getAssignment),
 							   ])
