@@ -215,7 +215,10 @@ class getAssignment(webapp2.RequestHandler):
                 assignment['grade'] = "None"
                            
             try:
-                assignment['comment'] = tree.xpath("//div[contains(@class,'comment')]/div/p/text()")[0].strip()
+                assignment['comment'] = ""
+                val = tree.xpath("//div[contains(@class,'comment')]/div//text()")
+                for v in val:
+                    assignment['comment'] += v.strip() + " "
             except:
                 assignment['comment'] = "None"
                 
