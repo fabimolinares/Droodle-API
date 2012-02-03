@@ -81,7 +81,7 @@ class getCourses(webapp2.RequestHandler):
         
         if  URL.endswith('/'):
             URL  = URL[:-1]
-        if not URL.endswith('/login/index.php'): 
+        if  not URL.endswith('/login/index.php'): 
             URL  += '/login/index.php'
         
         fetch = fetchPage(URL, 
@@ -102,13 +102,15 @@ class getCourses(webapp2.RequestHandler):
                             None,
                             cookie
                            )
-        tree    = fetch[0]
-        student = None
+        tree       = fetch[0]
+        student    = None
         rawcourses = tree.xpath("//td[contains(@class,'info c1')]/a")
+        #host       = URL.replace('/login/index.php','/user')
         
         for crs in rawcourses:
             s = crs.xpath("@href")[0]
-            if not s.contains(URL.replace('/login/index.php','/user')): continue
+            #if not s.contains(host): continue
+            if s.rfind('user') == -1: continue
             link   = (s[:s.find('=')]+s[s.rfind('='):]).replace('user','course')
             course = { 'title':crs.xpath("text()")[0].strip(),
                        'link': link, 
