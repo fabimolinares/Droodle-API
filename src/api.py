@@ -79,7 +79,9 @@ class getCourses(webapp2.RequestHandler):
         PASSWORD = decodestring( str( self.request.get('password') ) )
         URL      = self.request.get('url')
         
-        if not URL.endswith('/login/index.php') and not URL.endswith('/login/index.php/'): 
+        if  URL.endswith('/'):
+            URL  = URL[:-1]
+        if not URL.endswith('/login/index.php'): 
             URL  += '/login/index.php'
         
         fetch = fetchPage(URL, 
@@ -89,14 +91,12 @@ class getCourses(webapp2.RequestHandler):
         
         tree    = fetch[0]
         cookie  = makeCookieHeader(fetch[1])
-        data    = {}
         
         student = tree.xpath("//div[contains(@class,'logininfo')]/a")
         
         if len(student) == 0: self.abort(404) #bad url or credentials
-            
-        data['student'] = student[0].xpath("text()")[0]
-        data['courses'] = []
+        
+        data    = { 'courses': [], 'student': student[0].xpath("text()")[0] }     
         
         fetch   = fetchPage(student[0].xpath("@href")[0],
                             None,
@@ -105,11 +105,10 @@ class getCourses(webapp2.RequestHandler):
         tree    = fetch[0]
         student = None
         rawcourses = tree.xpath("//td[contains(@class,'info c1')]/a")
-        rawcourses.pop(0)
         
         for crs in rawcourses:
             s = crs.xpath("@href")[0]
-            if s.rfind('tag') != -1: continue #sometimes there are 'tags', not courses
+            if not s.contains(URL.replace('/login/index.php','/user')): continue
             link   = (s[:s.find('=')]+s[s.rfind('='):]).replace('user','course')
             course = { 'title':crs.xpath("text()")[0].strip(),
                        'link': link, 
