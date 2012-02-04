@@ -17,7 +17,7 @@ def getHeaders(cookie):
     
     headers = { 
     'Content-Type': 'application/x-www-form-urlencoded', 
-    'User-agent':'Opera/9.20 (Windows NT 6.0; U; en)',
+    'User-agent':'Opera/8.10 (Windows NT 5.0; U; en)',
     'Cookie' : makeCookieHeader(cookie)
     }
 
@@ -78,7 +78,7 @@ class getCourses(webapp2.RequestHandler):
         USERNAME = decodestring( str( self.request.get('username') ) )
         PASSWORD = decodestring( str( self.request.get('password') ) )
         URL      = self.request.get('url')
-        
+     
         if  URL.endswith('/'):
             URL  = URL[:-1]
         if  not URL.endswith('/login/index.php'): 
@@ -96,21 +96,19 @@ class getCourses(webapp2.RequestHandler):
         
         if len(student) == 0: self.abort(404) #bad url or credentials
         
-        data    = { 'courses': [], 'student': student[0].xpath("text()")[0] }     
+        data       = { 'courses': [], 'student': student[0].xpath("text()")[0] }     
         
-        fetch   = fetchPage(student[0].xpath("@href")[0],
-                            None,
-                            cookie
-                           )
+        fetch      = fetchPage(student[0].xpath("@href")[0],
+                               None,
+                               cookie
+                              )
         tree       = fetch[0]
         student    = None
         rawcourses = tree.xpath("//td[contains(@class,'info c1')]/a")
-        #host       = URL.replace('/login/index.php','/user')
         
         for crs in rawcourses:
             s = crs.xpath("@href")[0]
-            #if not s.contains(host): continue
-            if s.rfind('user') == -1: continue
+            if s.rfind('course=') == -1: continue
             link   = (s[:s.find('=')]+s[s.rfind('='):]).replace('user','course')
             course = { 'title':crs.xpath("text()")[0].strip(),
                        'link': link, 

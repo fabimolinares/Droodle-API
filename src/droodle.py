@@ -28,7 +28,7 @@ loader = jinja2.FileSystemLoader(path))
 
 class MainPageHandler(webapp2.RequestHandler):
     def get(self):
-        template_values = {'last_updated': '30.1.12'}
+        template_values = {'last_updated': '2.2.12'}
         template = jinja_environment.get_template('index.html')
         self.response.out.write(template.render(template_values))
 
